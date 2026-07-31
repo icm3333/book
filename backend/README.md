@@ -27,6 +27,7 @@ O projeto segue uma arquitetura em camadas bem definida:
 ### Endpoints Disponíveis:
 * `GET /v1/api/books` - Lista todos os livros salvos.
 * `POST /v1/api/books` - Cadastra um novo livro buscando os dados automaticamente na Open Library.
+* `PATCH /v1/api/books/{id}` - Atualiza parcialmente os dados do livro (como páginas lidas e/ou status) de forma flexível.
 * `DELETE /v1/api/books/{id}` - Remove um livro pelo ID.
 
 ---
@@ -44,34 +45,48 @@ O projeto segue uma arquitetura em camadas bem definida:
 git clone https://github.com/icm3333/book
 cd book
 ```
+
 ### 2. Configurar o Banco de Dados
 No seu PostgreSQL, crie um banco de dados vazio:
-```bash
+```sql
 CREATE DATABASE booktracker_db;
 ```
 
 ### 3. Configurar as Variáveis de Ambiente (.env)
 Na raiz do projeto (no mesmo nível do `pom.xml`), crie um arquivo chamado **`.env`** e adicione as suas credenciais do PostgreSQL:
 
-```bash
+```env
 DB_URL=jdbc:postgresql://localhost:5432/booktracker_db
 DB_USER=postgres
 DB_PASSWORD=sua_senha_do_pgadmin
 ```
 
+*(Certifique-se de que o arquivo `.env` está listado no seu `.gitignore` para não expor suas credenciais).*
+
 ### 4. Rodar a Aplicação
-Execute o projeto através do arquivo BookApplication.java
+Execute o projeto através do arquivo `BookApplication.java` (ou utilizando o Maven: `mvn spring-boot:run`).
 
 ---
 
-## 🧪 Exemplo de Requisição (POST)
+## 🧪 Exemplos de Requisições
 
-Para cadastrar um livro, envie um `POST` para `http://localhost:8080/v1/api/books` com o seguinte JSON:
-```bash
+### Cadastrar Livro (POST)
+Envie um `POST` para `http://localhost:8080/v1/api/books`:
+```json
 {
-"titleSearch": "Clean Code",
-"pagesRead": 25,
-"status": "LENDO"
+  "titleSearch": "Clean Code",
+  "pagesRead": 25,
+  "status": "LENDO"
 }
 ```
+
+### Atualização Parcial (PATCH)
+Envie um `PATCH` para `http://localhost:8080/v1/api/books/{id}` informando apenas o campo que deseja atualizar:
+```json
+{
+  "status": "CONCLUIDO",
+  "pagesRead": 464
+}
+```
+
 ---
