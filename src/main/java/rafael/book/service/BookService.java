@@ -3,6 +3,7 @@ package rafael.book.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import rafael.book.client.OpenLibraryClient;
+import rafael.book.controller.BookController;
 import rafael.book.model.Book;
 import rafael.book.repository.BookRepository;
 
@@ -40,4 +41,14 @@ public class BookService {
     public void delete(Long id){
         bookRepository.deleteById(id);
     }
+
+    public void updatePartial(Long id, BookController.BookRequestDTO request){
+        Book book = bookRepository.findById(id).orElseThrow(() -> new RuntimeException("The id " + id + " is not registred on db"));
+
+        if(request.getStatus() != null && !request.getStatus().isBlank()){ book.setStatus(request.getStatus()); }
+        if(request.getPagesRead() != null){ book.setCurrentPage(request.getPagesRead()); }
+
+        bookRepository.save(book);
+    }
+
 }

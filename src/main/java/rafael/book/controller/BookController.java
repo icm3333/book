@@ -33,6 +33,13 @@ public class BookController {
         bookService.delete(id);
     }
 
+    @PatchMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updatePage(@PathVariable Long id, @RequestBody BookRequestDTO request){
+        bookService.updatePartial(id, request);
+    }
+
+
     @Data
     public static class BookRequestDTO{
         private String titleSearch;
