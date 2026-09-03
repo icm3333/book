@@ -3,6 +3,7 @@ package rcm.book.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import rcm.book.client.OpenLibraryClient;
+import rcm.book.dto.OpenLibraryResponseDTO;
 import rcm.book.repository.BookRepository;
 import rcm.book.repository.UserBookRepository;
 import rcm.book.repository.UserRepository;
@@ -22,6 +23,13 @@ public class BookService {
     private final UserBookRepository userBookRepository;
     private final UserRepository userRepository;
     private final OpenLibraryClient openLibraryClient;
+
+    public OpenLibraryResponseDTO searchBooksAPI(String query){
+        if(query == null || query.trim().isEmpty()){
+            throw new IllegalArgumentException("Seach query is empty.")
+        }
+        return openLibraryClient.searchBooks(query);
+    }
 
     public UserBook addBookToUserList(Long userId, String openLibraryId, String title, String author, Integer pageCount){
         User user = userRepository.findById(userId).orElseThrow(()-> new RuntimeException("User not found"));
