@@ -1,4 +1,4 @@
-package rcm.book.service;
+package rcm.book.client;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
