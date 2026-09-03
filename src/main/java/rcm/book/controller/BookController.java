@@ -55,5 +55,14 @@ public class BookController{
         return ResponseEntity.ok(updated);
     }
 
+    @PatchMapping("/tracking/{userBookId}/status")
+    public ResponseEntity<UserBookResponseDTO> updateStatus(
+                            @PathVariable Long userBookId,
+                            @RequestParam ReadingStatus status){
+
+        UserBookResponseDTO updated = bookService.updateReadingStatus(userBookId, status);
+        return ResponseEntity.ok(updated);
+    }
+
     // TODO: Patch for updateReadingStatus
 }
