@@ -16,7 +16,7 @@ public class Book {
     private Long id;
 
     @Column(name = "open_library_id", nullable = false, unique = true)
-    private String openLibId;
+    private String openLibraryId;
 
     @Column(nullable = false)
     private String title;
