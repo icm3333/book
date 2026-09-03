@@ -3,6 +3,7 @@ package rcm.book.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import rcm.book.client.OpenLibraryClient;
+import rcm.book.dto.BookSearchResultDTO;
 import rcm.book.dto.OpenLibraryResponseDTO;
 import rcm.book.dto.UserBookResponseDTO;
 import rcm.book.repository.BookRepository;
@@ -39,11 +40,33 @@ public class BookService {
                 .finishDate(userBook.getFinishDate()).build();
     }
 
-    public OpenLibraryResponseDTO searchBooksAPI(String query){
+    public List<BookSearchResultDTO> searchBooks(String query){
         if(query == null || query.trim().isEmpty()){
             throw new IllegalArgumentException("Search query is empty.");
         }
-        return openLibraryClient.searchBooks(query);
+
+        OpenLibraryResponseDTO response = openLibraryClient.searchBooks(query);
+
+        if(response == null | response.getDocs() == null){
+            return List.of();
+        }
+
+        return response.getDocs().stream().map(bookDto -> {
+            String authorName = (bookDto.getAuthor() != null && !bookDto.getAuthor().isEmpty())
+                                ? bookDto.getAuthor().get(0)
+                                : "Unknown";
+            String coverUrl = (bookDto.getCoverId() != null)
+                                ? "https://covers.openLibrary.org/b/id/" + bookDto.getCoverId() + "-M.jpg"
+                                : null;
+
+            return BookSearchResultDTO.builder()
+                    .openLibraryId(bookDto.getKey())
+                    .title(bookDto.getTitle())
+                    .author(authorName)
+                    .coverImgUrl(coverUrl)
+                    .pageCount(bookDto.getNumberOfPagesMedian())
+                    .build();
+        }).toList();
     }
 
     public UserBookResponseDTO addBookToUserList(Long userId, String openLibraryId, String title, String author, Integer pageCount){

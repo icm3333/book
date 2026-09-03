@@ -3,6 +3,7 @@ package rcm.book.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import rcm.book.dto.BookSearchResultDTO;
 import rcm.book.dto.OpenLibraryResponseDTO;
 import rcm.book.dto.UserBookResponseDTO;
 import rcm.book.model.ReadingStatus;
@@ -21,8 +22,8 @@ public class BookController{
 
     @GetMapping("/search")
     public ResponseEntity<OpenLibraryResponseDTO> searchBooks(@RequestParam String query){
-        OpenLibraryResponseDTO result = bookService.searchBooksAPI(query);
-        return ResponseEntity.ok(result);
+        List<BookSearchResultDTO> results = bookService.searchBooks(query);
+        return ResponseEntity.ok(results);
     }
 
     @PostMapping("/track")
