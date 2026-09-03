@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import rcm.book.client.OpenLibraryClient;
 import rcm.book.dto.OpenLibraryResponseDTO;
+import rcm.book.dto.UserBookResponseDTO;
 import rcm.book.repository.BookRepository;
 import rcm.book.repository.UserBookRepository;
 import rcm.book.repository.UserRepository;
@@ -24,6 +25,20 @@ public class BookService {
     private final UserRepository userRepository;
     private final OpenLibraryClient openLibraryClient;
 
+    private UserBookResponseDTO mapUserBookToDTO(UserBook userBook){
+        return UserBookResponseDTO.builder()
+                .id(userBook.getId())
+                .title(userBook.getBook().getTitle())
+                .author(userBook.getBook().getTitle())
+                .openLibraryId(userBook.getBook().getOpenLibraryId())
+                .coverImgURL(userBook.getBook().getCoverImgURL())
+                .pageCount(userBook.getBook().getPageCount())
+                .status(userBook.getStatus())
+                .currentPage(userBook.getCurrentPage())
+                .startDate(userBook.getStartDate())
+                .finishDate(userBook.getFinishDate()).build();
+    }
+
     public OpenLibraryResponseDTO searchBooksAPI(String query){
         if(query == null || query.trim().isEmpty()){
             throw new IllegalArgumentException("Search query is empty.");
@@ -31,7 +46,7 @@ public class BookService {
         return openLibraryClient.searchBooks(query);
     }
 
-    public UserBook addBookToUserList(Long userId, String openLibraryId, String title, String author, Integer pageCount){
+    public UserBookResponseDTO addBookToUserList(Long userId, String openLibraryId, String title, String author, Integer pageCount){
         User user = userRepository.findById(userId).orElseThrow(()-> new RuntimeException("User not found"));
 
         Book book = bookRepository.findByOpenLibraryId(openLibraryId)
@@ -43,24 +58,27 @@ public class BookService {
                    newBook.setPageCount(pageCount);
                    return bookRepository.save(newBook);
                 });
+
         UserBook userBook = new UserBook();
         userBook.setUser(user);
         userBook.setBook(book);
         userBook.setStatus(ReadingStatus.TO_READ);
         userBook.setCurrentPage(0);
 
-        return userBookRepository.save(userBook);
+        return mapUserBookToDTO(userBookRepository.save(userBook));
     }
 
-    public List<UserBook> getUserBooks(Long userId, ReadingStatus status){
+    public List<UserBookResponseDTO> getUserBooks(Long userId, ReadingStatus status){
+        List<UserBook> userBooks;
         if(status != null){
-            return userBookRepository.findByUserIdAndStatus(userId, status);
+            userBooks =  userBookRepository.findByUserIdAndStatus(userId, status);
         }else{
-            return userBookRepository.findByUserId(userId);
+            userBooks = userBookRepository.findByUserId(userId);
         }
+        return userBooks.stream().map(this::mapUserBookToDTO).toList();
     }
 
-    public UserBook updateReadingStatus(Long userBookId, ReadingStatus newStatus){
+    public UserBookResponseDTO updateReadingStatus(Long userBookId, ReadingStatus newStatus){
         UserBook userBook = userBookRepository.findById(userBookId)
                 .orElseThrow(()-> new RuntimeException("Tracking record not found with id: " + userBookId));
 
@@ -76,10 +94,10 @@ public class BookService {
             if(userBook.getBook().getPageCount() != null) userBook.setCurrentPage(userBook.getBook().getPageCount());
         }
 
-        return userBookRepository.save(userBook);
+        return mapUserBookToDTO(userBookRepository.save(userBook));
     }
 
-    public UserBook updatePageProgress(Long userBookId, Integer newPage){
+    public UserBookResponseDTO updatePageProgress(Long userBookId, Integer newPage){
         UserBook userBook = userBookRepository.findById(userBookId)
                 .orElseThrow(()-> new RuntimeException("Tracking record not found with id: " + userBookId));
 
@@ -100,7 +118,7 @@ public class BookService {
                 userBook.setStartDate(LocalDate.now());
             }
         }
-        return userBookRepository.save(userBook);
+        return mapUserBookToDTO(userBookRepository.save(userBook));
     }
 
     // TODO: Implement getUserStats

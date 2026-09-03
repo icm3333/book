@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import rcm.book.dto.OpenLibraryResponseDTO;
+import rcm.book.dto.UserBookResponseDTO;
 import rcm.book.model.ReadingStatus;
 import rcm.book.model.UserBook;
 import rcm.book.service.BookService;
@@ -25,7 +26,7 @@ public class BookController{
     }
 
     @PostMapping("/track")
-    public ResponseEntity<UserBook> addBookToUserList(
+    public ResponseEntity<UserBookResponseDTO> addBookToUserList(
                             @RequestParam Long userId,
                             @RequestParam String openLibraryId,
                             @RequestParam String title,
@@ -37,7 +38,7 @@ public class BookController{
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<UserBook>> getUserBooks(
+    public ResponseEntity<List<UserBookResponseDTO>> getUserBooks(
                             @PathVariable Long userId,
                             @RequestParam(required = false)ReadingStatus status){
 
@@ -46,7 +47,7 @@ public class BookController{
     }
 
     @PatchMapping("/tracking/{userBookId}/progress")
-    public ResponseEntity<UserBook> updateProgress(
+    public ResponseEntity<UserBookResponseDTO> updateProgress(
                             @PathVariable Long userBookId,
                             @RequestParam Integer page){
 
