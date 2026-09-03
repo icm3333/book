@@ -26,7 +26,7 @@ public class BookService {
 
     public OpenLibraryResponseDTO searchBooksAPI(String query){
         if(query == null || query.trim().isEmpty()){
-            throw new IllegalArgumentException("Seach query is empty.")
+            throw new IllegalArgumentException("Search query is empty.");
         }
         return openLibraryClient.searchBooks(query);
     }

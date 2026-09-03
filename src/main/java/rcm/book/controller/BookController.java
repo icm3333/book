@@ -53,4 +53,6 @@ public class BookController{
         UserBook updated = bookService.updatePageProgress(userBookId, page);
         return ResponseEntity.ok(updated);
     }
+
+    // TODO: Patch for updateReadingStatus
 }
