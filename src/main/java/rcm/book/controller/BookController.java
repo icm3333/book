@@ -21,7 +21,7 @@ public class BookController{
 
 
     @GetMapping("/search")
-    public ResponseEntity<OpenLibraryResponseDTO> searchBooks(@RequestParam String query){
+    public ResponseEntity<List<BookSearchResultDTO>> searchBooks(@RequestParam String query){
         List<BookSearchResultDTO> results = bookService.searchBooks(query);
         return ResponseEntity.ok(results);
     }
@@ -34,7 +34,7 @@ public class BookController{
                             @RequestParam(required = false) String author,
                             @RequestParam(required = false) Integer pageCount){
 
-        UserBook trackedBook = bookService.addBookToUserList(userId, openLibraryId, title, author, pageCount);
+        UserBookResponseDTO trackedBook = bookService.addBookToUserList(userId, openLibraryId, title, author, pageCount);
         return ResponseEntity.ok(trackedBook);
     }
 
@@ -43,7 +43,7 @@ public class BookController{
                             @PathVariable Long userId,
                             @RequestParam(required = false)ReadingStatus status){
 
-        List<UserBook> books = bookService.getUserBooks(userId, status);
+        List<UserBookResponseDTO> books = bookService.getUserBooks(userId, status);
         return ResponseEntity.ok(books);
     }
 
@@ -52,7 +52,7 @@ public class BookController{
                             @PathVariable Long userBookId,
                             @RequestParam Integer page){
 
-        UserBook updated = bookService.updatePageProgress(userBookId, page);
+        UserBookResponseDTO updated = bookService.updatePageProgress(userBookId, page);
         return ResponseEntity.ok(updated);
     }
 
