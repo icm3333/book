@@ -6,6 +6,7 @@ import rcm.book.client.OpenLibraryClient;
 import rcm.book.dto.BookSearchResultDTO;
 import rcm.book.dto.OpenLibraryResponseDTO;
 import rcm.book.dto.UserBookResponseDTO;
+import rcm.book.exception.ResourceNotFoundException;
 import rcm.book.repository.BookRepository;
 import rcm.book.repository.UserBookRepository;
 import rcm.book.repository.UserRepository;
@@ -70,7 +71,7 @@ public class BookService {
     }
 
     public UserBookResponseDTO addBookToUserList(Long userId, String openLibraryId, String title, String author, Integer pageCount){
-        User user = userRepository.findById(userId).orElseThrow(()-> new RuntimeException("User not found"));
+        User user = userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User not found with id: " + userId));
 
         Book book = bookRepository.findByOpenLibraryId(openLibraryId)
                 .orElseGet(()-> {
@@ -103,7 +104,7 @@ public class BookService {
 
     public UserBookResponseDTO updateReadingStatus(Long userBookId, ReadingStatus newStatus){
         UserBook userBook = userBookRepository.findById(userBookId)
-                .orElseThrow(()-> new RuntimeException("Tracking record not found with id: " + userBookId));
+                .orElseThrow(()-> new ResourceNotFoundException("Tracking record not found with id: " + userBookId));
 
         userBook.setStatus(newStatus);
 
@@ -122,7 +123,7 @@ public class BookService {
 
     public UserBookResponseDTO updatePageProgress(Long userBookId, Integer newPage){
         UserBook userBook = userBookRepository.findById(userBookId)
-                .orElseThrow(()-> new RuntimeException("Tracking record not found with id: " + userBookId));
+                .orElseThrow(()-> new ResourceNotFoundException("Tracking record not found with id: " + userBookId));
 
         if(newPage < 0){
             throw new IllegalArgumentException("Page cannot be negative.");
