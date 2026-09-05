@@ -16,13 +16,13 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = Map.of(
                 "timestamp", LocalDateTime.now(),
                 "status", HttpStatus.NOT_FOUND.value(),
-                "Error", "Not found"
+                "Error", "Not found",
                 "message", ex.getMessage()
         );
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
+    @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleIllegalArgument(IllegalArgumentException ex){
         Map<String, Object> body = Map.of(
                 "timestamp", LocalDateTime.now(),
