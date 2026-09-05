@@ -5,12 +5,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import rcm.book.dto.BookSearchResultDTO;
 import rcm.book.dto.OpenLibraryResponseDTO;
 import rcm.book.dto.UserBookResponseDTO;
+import rcm.book.dto.UserStatsResponseDTO;
 import rcm.book.model.ReadingStatus;
 import rcm.book.model.UserBook;
 import rcm.book.service.BookService;
@@ -71,5 +73,13 @@ public class BookController{
 
         UserBookResponseDTO updated = bookService.updateReadingStatus(userBookId, status);
         return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping("user/{userId}/stats")
+    public ResponseEntity<UserStatsResponseDTO> getUserStats(
+            @PathVariable @Positive(message = "userID must be positive") @NotNull(message = "User ID cannot be null") Long userId){
+
+        UserStatsResponseDTO stats = bookService.getUserStats(userId);
+        return ResponseEntity.ok(stats);
     }
 }

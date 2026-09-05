@@ -6,6 +6,7 @@ import rcm.book.client.OpenLibraryClient;
 import rcm.book.dto.BookSearchResultDTO;
 import rcm.book.dto.OpenLibraryResponseDTO;
 import rcm.book.dto.UserBookResponseDTO;
+import rcm.book.dto.UserStatsResponseDTO;
 import rcm.book.exception.ResourceNotFoundException;
 import rcm.book.repository.BookRepository;
 import rcm.book.repository.UserBookRepository;
@@ -146,5 +147,34 @@ public class BookService {
     }
 
     // TODO: Implement getUserStats
+
+    public UserStatsResponseDTO getUserStats(Long userId){
+        userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User with id " + userId + " was not found"));
+
+        List<UserBook> userBooks = userBookRepository.findByUserId(userId);
+
+        long completed = userBooks.stream().filter(ub -> ub.getStatus() == ReadingStatus.COMPLETED).count();
+        long reading = userBooks.stream().filter(ub -> ub.getStatus() == ReadingStatus.READING).count();
+        long toRead = userBooks.stream().filter(ub -> ub.getStatus() == ReadingStatus.TO_READ).count();
+
+        int totalPagesRead = userBooks.stream().mapToInt(ub -> {
+            if(ub.getStatus() == ReadingStatus.COMPLETED){
+                return (ub.getBook().getPageCount() != null) ? ub.getBook().getPageCount() : 0;
+            }else if(ub.getStatus() == ReadingStatus.READING){
+                return (ub.getCurrentPage() != null) ? ub.getCurrentPage() : 0;
+            }else {
+                return 0;
+            }
+        }).sum();
+
+        return UserStatsResponseDTO.builder()
+                .userId(userId)
+                .totalBooks(userBooks.size())
+                .completedBooks(completed)
+                .readingBooks(reading)
+                .toReadBooks(toRead)
+                .totalPagesRead(totalPagesRead)
+                .build();
+    }
 
 }
