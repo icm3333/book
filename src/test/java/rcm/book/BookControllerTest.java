@@ -3,8 +3,10 @@ package rcm.book;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import rcm.book.config.CorsConfig;
 import rcm.book.controller.BookController;
 import rcm.book.dto.UserBookResponseDTO;
 import rcm.book.dto.UserStatsResponseDTO;
@@ -17,10 +19,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
 @WebMvcTest(BookController.class)
+@Import(CorsConfig.class)
 public class BookControllerTest {
 
     @Autowired
@@ -59,5 +63,15 @@ public class BookControllerTest {
         mockMvc.perform(patch("/api/v1/books/tracking/1/progress")
                 .param("page", "151"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void corsConfiguration_ShouldAllowAngularOrigin() throws Exception {
+        mockMvc.perform(options("/api/v1/books/users/1/stats") // OPTIONS preflight request
+                        .header("Origin", "http://localhost:4200")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 }
