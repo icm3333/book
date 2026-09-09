@@ -44,7 +44,7 @@ public class BookServiceTest {
 
     @BeforeEach
     void setUp(){
-        testUser = new User(1L, "iris", "iris@email.com", "senha123");
+        testUser = new User(1L, "iris", "iris@email.com", "senha123", null);
         testBook = new Book(1L, "OL2847540M", "SICP", "Harold Abelson", "bigurl", 420);
         testUserBook = new UserBook(1L, testUser, testBook, ReadingStatus.READING, 67, null, null);
     }

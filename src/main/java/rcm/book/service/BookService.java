@@ -88,7 +88,7 @@ public class BookService {
                    return bookRepository.save(newBook);
                 });
 
-        if(userBookRepository.findByUser_IdAndBook_Id(userId, book.getId()).ifPresent()){
+        if(userBookRepository.findByUser_IdAndBook_Id(userId, book.getId()).isPresent()){
             throw new DuplicateResourceException("Book is already in this user's list.");
         }
 
