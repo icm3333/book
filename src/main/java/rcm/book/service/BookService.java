@@ -24,6 +24,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class BookService {
     private final BookRepository bookRepository;
     private final UserBookRepository userBookRepository;
@@ -73,6 +74,7 @@ public class BookService {
         }).toList();
     }
 
+    @Transactional
     public UserBookResponseDTO addBookToUserList(Long userId, String openLibraryId, String title, String author, Integer pageCount){
         User user = userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User not found with id: " + userId));
 
@@ -109,6 +111,7 @@ public class BookService {
         return userBooks.stream().map(this::mapUserBookToDTO).toList();
     }
 
+    @Transactional
     public UserBookResponseDTO updateReadingStatus(Long userBookId, ReadingStatus newStatus){
         UserBook userBook = userBookRepository.findById(userBookId)
                 .orElseThrow(()-> new ResourceNotFoundException("Tracking record not found with id: " + userBookId));
@@ -128,6 +131,7 @@ public class BookService {
         return mapUserBookToDTO(userBookRepository.save(userBook));
     }
 
+    @Transactional
     public UserBookResponseDTO updatePageProgress(Long userBookId, Integer newPage){
         UserBook userBook = userBookRepository.findById(userBookId)
                 .orElseThrow(()-> new ResourceNotFoundException("Tracking record not found with id: " + userBookId));
@@ -151,8 +155,6 @@ public class BookService {
         }
         return mapUserBookToDTO(userBookRepository.save(userBook));
     }
-
-    // TODO: Implement getUserStats
 
     public UserStatsResponseDTO getUserStats(Long userId){
         userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User with id " + userId + " was not found"));
