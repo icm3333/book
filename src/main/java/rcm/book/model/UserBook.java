@@ -1,17 +1,19 @@
 package rcm.book.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "users_books")
-@Data
+@Table(name = "users_books", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "book_id"}))
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class UserBook {
+    @EqualsAndHashCode.Include
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
