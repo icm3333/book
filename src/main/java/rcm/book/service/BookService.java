@@ -32,7 +32,7 @@ public class BookService {
         return UserBookResponseDTO.builder()
                 .id(userBook.getId())
                 .title(userBook.getBook().getTitle())
-                .author(userBook.getBook().getTitle())
+                .author(userBook.getBook().getAuthor())
                 .openLibraryId(userBook.getBook().getOpenLibraryId())
                 .coverImgURL(userBook.getBook().getCoverImgURL())
                 .pageCount(userBook.getBook().getPageCount())
@@ -49,7 +49,7 @@ public class BookService {
 
         OpenLibraryResponseDTO response = openLibraryClient.searchBooks(query);
 
-        if(response == null | response.getDocs() == null){
+        if(response == null || response.getDocs() == null){
             return List.of();
         }
 
