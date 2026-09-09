@@ -1,5 +1,6 @@
 package rcm.book.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import rcm.book.client.OpenLibraryClient;
@@ -7,6 +8,7 @@ import rcm.book.dto.BookSearchResultDTO;
 import rcm.book.dto.OpenLibraryResponseDTO;
 import rcm.book.dto.UserBookResponseDTO;
 import rcm.book.dto.UserStatsResponseDTO;
+import rcm.book.exception.DuplicateResourceException;
 import rcm.book.exception.ResourceNotFoundException;
 import rcm.book.repository.BookRepository;
 import rcm.book.repository.UserBookRepository;
@@ -83,6 +85,10 @@ public class BookService {
                    newBook.setPageCount(pageCount);
                    return bookRepository.save(newBook);
                 });
+
+        if(userBookRepository.findByUser_IdAndBook_Id(userId, book.getId()).ifPresent()){
+            throw new DuplicateResourceException("Book is already in this user's list.");
+        }
 
         UserBook userBook = new UserBook();
         userBook.setUser(user);

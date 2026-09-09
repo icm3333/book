@@ -44,4 +44,15 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<Object> handleDuplicateResource(DuplicateResourceException ex){
+        Map<String, Object> body = Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.CONFLICT.value(),
+                "Error", "Duplicate Resource",
+                "message", ex.getMessage()
+        );
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
 }
