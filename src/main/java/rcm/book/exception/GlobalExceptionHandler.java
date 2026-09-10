@@ -3,11 +3,13 @@ package rcm.book.exception;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -54,5 +56,18 @@ public class GlobalExceptionHandler {
                 "message", ex.getMessage()
         );
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex){
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream().map(err -> err.getField() + ":"
+                + err.getDefaultMessage()).collect(Collectors.joining(", "));
+        Map<String, Object> body = Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "Error", "Argument not Valid",
+                "message", errorMessage
+        );
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 }
