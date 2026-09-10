@@ -32,7 +32,7 @@ public class AuthService {
     @Value("${jwt.expiration}")
     private long expirationTime;
 
-    public void register(RegisterRequestDTO dto) throws IllegalArgumentException{
+    public void register(RegisterRequestDTO dto){
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already in use");
         }
@@ -53,7 +53,7 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    public TokenResponseDTO login(LoginRequestDTO dto) throws Exception{
+    public TokenResponseDTO login(LoginRequestDTO dto){
         try {
             Authentication auth = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(dto.getUsername(), dto.getPassword()));
             String token = tokenProvider.generateToken(auth);

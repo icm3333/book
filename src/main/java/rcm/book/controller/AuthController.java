@@ -18,13 +18,13 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public void register(@RequestBody @Valid RegisterRequestDTO registerRequestDTO) throws Exception{
+    public void register(@RequestBody @Valid RegisterRequestDTO registerRequestDTO){
         authService.register(registerRequestDTO);
     }
 
     @PostMapping("/login")
     @ResponseStatus(HttpStatus.OK)
-    public TokenResponseDTO login(@RequestBody @Valid LoginRequestDTO loginRequestDTO) throws Exception{
+    public TokenResponseDTO login(@RequestBody @Valid LoginRequestDTO loginRequestDTO){
         return authService.login(loginRequestDTO);
     }
 }
