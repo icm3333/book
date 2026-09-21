@@ -10,7 +10,7 @@ import rcm.book.dto.TokenResponseDTO;
 import rcm.book.service.AuthService;
 
 @RestController
-@RequestMapping("/v1/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
