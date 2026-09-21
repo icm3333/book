@@ -25,7 +25,7 @@ public class Book {
     private String author;
 
     @Column(name = "cover_img_url")
-    private String coverImgURL;
+    private String coverImgUrl;
 
     @Column(name = "page_count")
     private Integer pageCount;

@@ -1,94 +1,75 @@
 package rcm.book.service;
 
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import rcm.book.client.OpenLibraryClient;
 import rcm.book.dto.BookSearchResultDTO;
 import rcm.book.dto.OpenLibraryResponseDTO;
+import rcm.book.dto.TrackBookRequestDTO;
 import rcm.book.dto.UserBookResponseDTO;
 import rcm.book.dto.UserStatsResponseDTO;
 import rcm.book.exception.DuplicateResourceException;
 import rcm.book.exception.ResourceNotFoundException;
-import rcm.book.repository.BookRepository;
-import rcm.book.repository.UserBookRepository;
-import rcm.book.repository.UserRepository;
 import rcm.book.model.Book;
 import rcm.book.model.ReadingStatus;
 import rcm.book.model.User;
 import rcm.book.model.UserBook;
+import rcm.book.repository.BookRepository;
+import rcm.book.repository.UserBookRepository;
+import rcm.book.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.util.List;
 
-
+/**
+ * Reading-library operations.
+ *
+ * <p>Every user-scoped method takes the owning {@code userId} as its first argument and
+ * resolves tracking records through an ownership-scoped query. Callers must supply the id
+ * of the authenticated user; it is never accepted from client input.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BookService {
+
+    private static final String COVER_URL_TEMPLATE = "https://covers.openlibrary.org/b/id/%d-M.jpg";
+    private static final String UNKNOWN_AUTHOR = "Unknown";
+
     private final BookRepository bookRepository;
     private final UserBookRepository userBookRepository;
     private final UserRepository userRepository;
     private final OpenLibraryClient openLibraryClient;
 
-    private UserBookResponseDTO mapUserBookToDTO(UserBook userBook){
-        return UserBookResponseDTO.builder()
-                .id(userBook.getId())
-                .title(userBook.getBook().getTitle())
-                .author(userBook.getBook().getAuthor())
-                .openLibraryId(userBook.getBook().getOpenLibraryId())
-                .coverImgURL(userBook.getBook().getCoverImgURL())
-                .pageCount(userBook.getBook().getPageCount())
-                .status(userBook.getStatus())
-                .currentPage(userBook.getCurrentPage())
-                .startDate(userBook.getStartDate())
-                .finishDate(userBook.getFinishDate()).build();
-    }
-
     public List<BookSearchResultDTO> searchBooks(String query){
-        if(query == null || query.trim().isEmpty()){
+        if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("Search query is empty.");
         }
 
         OpenLibraryResponseDTO response = openLibraryClient.searchBooks(query);
-
-        if(response == null || response.getDocs() == null){
+        if (response == null || response.getDocs() == null) {
             return List.of();
         }
 
-        return response.getDocs().stream().map(bookDto -> {
-            String authorName = (bookDto.getAuthor() != null && !bookDto.getAuthor().isEmpty())
-                                ? bookDto.getAuthor().get(0)
-                                : "Unknown";
-            String coverUrl = (bookDto.getCoverId() != null)
-                                ? "https://covers.openLibrary.org/b/id/" + bookDto.getCoverId() + "-M.jpg"
-                                : null;
-
-            return BookSearchResultDTO.builder()
-                    .openLibraryId(bookDto.getKey())
-                    .title(bookDto.getTitle())
-                    .author(authorName)
-                    .coverImgUrl(coverUrl)
-                    .pageCount(bookDto.getNumberOfPagesMedian())
-                    .build();
-        }).toList();
+        return response.getDocs().stream().map(doc -> BookSearchResultDTO.builder()
+                .openLibraryId(doc.getKey())
+                .title(doc.getTitle())
+                .author(firstAuthorOf(doc.getAuthor()))
+                .coverImgUrl(coverUrlOf(doc.getCoverId()))
+                .pageCount(doc.getNumberOfPagesMedian())
+                .build()).toList();
     }
 
     @Transactional
-    public UserBookResponseDTO addBookToUserList(Long userId, String openLibraryId, String title, String author, Integer pageCount){
-        User user = userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User not found with id: " + userId));
+    public UserBookResponseDTO addBookToUserList(Long userId, TrackBookRequestDTO request){
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        Book book = bookRepository.findByOpenLibraryId(openLibraryId)
-                .orElseGet(()-> {
-                   Book newBook = new Book();
-                   newBook.setOpenLibraryId(openLibraryId);
-                   newBook.setTitle(title);
-                   newBook.setAuthor(author);
-                   newBook.setPageCount(pageCount);
-                   return bookRepository.save(newBook);
-                });
+        Book book = bookRepository.findByOpenLibraryId(request.getOpenLibraryId())
+                .orElseGet(() -> bookRepository.save(newBookFrom(request)));
 
-        if(userBookRepository.findByUser_IdAndBook_Id(userId, book.getId()).isPresent()){
+        if (userBookRepository.existsByUserIdAndBookId(userId, book.getId())) {
             throw new DuplicateResourceException("Book is already in this user's list.");
         }
 
@@ -98,91 +79,130 @@ public class BookService {
         userBook.setStatus(ReadingStatus.TO_READ);
         userBook.setCurrentPage(0);
 
-        return mapUserBookToDTO(userBookRepository.save(userBook));
+        return toResponse(userBookRepository.save(userBook));
     }
 
     public List<UserBookResponseDTO> getUserBooks(Long userId, ReadingStatus status){
-        List<UserBook> userBooks;
-        if(status != null){
-            userBooks =  userBookRepository.findByUserIdAndStatus(userId, status);
-        }else{
-            userBooks = userBookRepository.findByUserId(userId);
-        }
-        return userBooks.stream().map(this::mapUserBookToDTO).toList();
+        List<UserBook> userBooks = (status != null)
+                ? userBookRepository.findByUserIdAndStatus(userId, status)
+                : userBookRepository.findByUserId(userId);
+
+        return userBooks.stream().map(this::toResponse).toList();
     }
 
     @Transactional
-    public UserBookResponseDTO updateReadingStatus(Long userBookId, ReadingStatus newStatus){
-        UserBook userBook = userBookRepository.findById(userBookId)
-                .orElseThrow(()-> new ResourceNotFoundException("Tracking record not found with id: " + userBookId));
-
+    public UserBookResponseDTO updateReadingStatus(Long userId, Long userBookId, ReadingStatus newStatus){
+        UserBook userBook = requireOwnedUserBook(userId, userBookId);
         userBook.setStatus(newStatus);
 
-        if(newStatus == ReadingStatus.READING && userBook.getStartDate() == null){
-            // if just started reading set today date as start reading date.
+        if (newStatus == ReadingStatus.READING && userBook.getStartDate() == null) {
             userBook.setStartDate(LocalDate.now());
-        }else if(newStatus == ReadingStatus.COMPLETED){
-            // if they moved from TO_READ to COMPLETED set startDate and finishDate as today.
-            if(userBook.getStartDate() == null) userBook.setStartDate(LocalDate.now());
+        } else if (newStatus == ReadingStatus.COMPLETED) {
+            // Completing a book implies it was started, and that every page was read.
+            if (userBook.getStartDate() == null) {
+                userBook.setStartDate(LocalDate.now());
+            }
             userBook.setFinishDate(LocalDate.now());
-            if(userBook.getBook().getPageCount() != null) userBook.setCurrentPage(userBook.getBook().getPageCount());
+            if (userBook.getBook().getPageCount() != null) {
+                userBook.setCurrentPage(userBook.getBook().getPageCount());
+            }
         }
 
-        return mapUserBookToDTO(userBookRepository.save(userBook));
+        return toResponse(userBookRepository.save(userBook));
     }
 
     @Transactional
-    public UserBookResponseDTO updatePageProgress(Long userBookId, Integer newPage){
-        UserBook userBook = userBookRepository.findById(userBookId)
-                .orElseThrow(()-> new ResourceNotFoundException("Tracking record not found with id: " + userBookId));
+    public UserBookResponseDTO updatePageProgress(Long userId, Long userBookId, Integer newPage){
+        UserBook userBook = requireOwnedUserBook(userId, userBookId);
 
-        if(newPage < 0){
+        if (newPage == null || newPage < 0) {
             throw new IllegalArgumentException("Page cannot be negative.");
         }
 
         Integer totalPages = userBook.getBook().getPageCount();
-        if(totalPages != null && newPage > totalPages){
-            throw new IllegalArgumentException("Current page cannot be greater than total book pages (" + totalPages + ").");
+        if (totalPages != null && newPage > totalPages) {
+            throw new IllegalArgumentException(
+                    "Current page cannot be greater than total book pages (" + totalPages + ").");
         }
         userBook.setCurrentPage(newPage);
 
-        // if user started reading and only changed the page count, move from TO_READ to READING
-        if(newPage > 0 && userBook.getStatus() == ReadingStatus.TO_READ){
+        // Recording progress on an untouched book implicitly starts it.
+        if (newPage > 0 && userBook.getStatus() == ReadingStatus.TO_READ) {
             userBook.setStatus(ReadingStatus.READING);
-            if(userBook.getStartDate() == null){
+            if (userBook.getStartDate() == null) {
                 userBook.setStartDate(LocalDate.now());
             }
         }
-        return mapUserBookToDTO(userBookRepository.save(userBook));
+
+        return toResponse(userBookRepository.save(userBook));
     }
 
     public UserStatsResponseDTO getUserStats(Long userId){
-        userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User with id " + userId + " was not found"));
-
         List<UserBook> userBooks = userBookRepository.findByUserId(userId);
-
-        long completed = userBooks.stream().filter(ub -> ub.getStatus() == ReadingStatus.COMPLETED).count();
-        long reading = userBooks.stream().filter(ub -> ub.getStatus() == ReadingStatus.READING).count();
-        long toRead = userBooks.stream().filter(ub -> ub.getStatus() == ReadingStatus.TO_READ).count();
-
-        int totalPagesRead = userBooks.stream().mapToInt(ub -> {
-            if(ub.getStatus() == ReadingStatus.COMPLETED){
-                return (ub.getBook().getPageCount() != null) ? ub.getBook().getPageCount() : 0;
-            }else if(ub.getStatus() == ReadingStatus.READING){
-                return (ub.getCurrentPage() != null) ? ub.getCurrentPage() : 0;
-            }else {
-                return 0;
-            }
-        }).sum();
 
         return UserStatsResponseDTO.builder()
                 .userId(userId)
                 .totalBooks(userBooks.size())
-                .completedBooks(completed)
-                .readingBooks(reading)
-                .toReadBooks(toRead)
-                .totalPagesRead(totalPagesRead)
+                .completedBooks(countByStatus(userBooks, ReadingStatus.COMPLETED))
+                .readingBooks(countByStatus(userBooks, ReadingStatus.READING))
+                .toReadBooks(countByStatus(userBooks, ReadingStatus.TO_READ))
+                .totalPagesRead(userBooks.stream().mapToInt(BookService::pagesReadOf).sum())
                 .build();
     }
 
+    /**
+     * Loads a tracking record that belongs to the given user.
+     *
+     * <p>A record owned by somebody else is reported as not found rather than forbidden, so
+     * the API does not disclose which ids exist.
+     */
+    private UserBook requireOwnedUserBook(Long userId, Long userBookId){
+        return userBookRepository.findByIdAndUserId(userBookId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tracking record not found with id: " + userBookId));
+    }
+
+    private Book newBookFrom(TrackBookRequestDTO request){
+        Book book = new Book();
+        book.setOpenLibraryId(request.getOpenLibraryId());
+        book.setTitle(request.getTitle());
+        book.setAuthor(request.getAuthor());
+        book.setPageCount(request.getPageCount());
+        return book;
+    }
+
+    private UserBookResponseDTO toResponse(UserBook userBook){
+        Book book = userBook.getBook();
+        return UserBookResponseDTO.builder()
+                .id(userBook.getId())
+                .title(book.getTitle())
+                .author(book.getAuthor())
+                .openLibraryId(book.getOpenLibraryId())
+                .coverImgUrl(book.getCoverImgUrl())
+                .pageCount(book.getPageCount())
+                .status(userBook.getStatus())
+                .currentPage(userBook.getCurrentPage())
+                .startDate(userBook.getStartDate())
+                .finishDate(userBook.getFinishDate())
+                .build();
+    }
+
+    private static long countByStatus(List<UserBook> userBooks, ReadingStatus status){
+        return userBooks.stream().filter(userBook -> userBook.getStatus() == status).count();
+    }
+
+    private static int pagesReadOf(UserBook userBook){
+        Integer pages = (userBook.getStatus() == ReadingStatus.COMPLETED)
+                ? userBook.getBook().getPageCount()
+                : (userBook.getStatus() == ReadingStatus.READING ? userBook.getCurrentPage() : null);
+
+        return pages != null ? pages : 0;
+    }
+
+    private static String firstAuthorOf(List<String> authors){
+        return (authors != null && !authors.isEmpty()) ? authors.get(0) : UNKNOWN_AUTHOR;
+    }
+
+    private static String coverUrlOf(Integer coverId){
+        return coverId != null ? COVER_URL_TEMPLATE.formatted(coverId) : null;
+    }
 }

@@ -1,85 +1,87 @@
 package rcm.book.controller;
 
-import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.Response;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import rcm.book.dto.BookSearchResultDTO;
-import rcm.book.dto.OpenLibraryResponseDTO;
+import rcm.book.dto.TrackBookRequestDTO;
+import rcm.book.dto.UpdateProgressRequestDTO;
+import rcm.book.dto.UpdateStatusRequestDTO;
 import rcm.book.dto.UserBookResponseDTO;
 import rcm.book.dto.UserStatsResponseDTO;
 import rcm.book.model.ReadingStatus;
-import rcm.book.model.UserBook;
+import rcm.book.model.User;
 import rcm.book.service.BookService;
 
 import java.util.List;
 
+/**
+ * Book catalog search and the authenticated user's reading library.
+ *
+ * <p>The library endpoints are all scoped to {@code /me} and resolve the user from the
+ * validated JWT. No endpoint accepts a user id from the client, which is what prevents one
+ * account from reading or modifying another account's data.
+ */
 @RestController
 @RequestMapping("/api/v1/books")
 @RequiredArgsConstructor
 @Validated
-public class BookController{
+public class BookController {
 
     private final BookService bookService;
 
-
     @GetMapping("/search")
     public ResponseEntity<List<BookSearchResultDTO>> searchBooks(
-                        @RequestParam @NotBlank(message = "Query cannot be empty") String query){
+            @RequestParam @NotBlank(message = "Query cannot be empty") String query){
 
-        List<BookSearchResultDTO> results = bookService.searchBooks(query);
-        return ResponseEntity.ok(results);
+        return ResponseEntity.ok(bookService.searchBooks(query));
     }
 
-    @PostMapping("/track")
-    public ResponseEntity<UserBookResponseDTO> addBookToUserList(
-                            @RequestParam @Positive(message = "userID must be positive") @NotNull(message = "User ID cannot be null") Long userId,
-                            @RequestParam @NotBlank(message = "Open Library ID cannot be blank") String openLibraryId,
-                            @RequestParam @NotBlank(message = "Book title cannot be blank") String title,
-                            @RequestParam(required = false) String author,
-                            @RequestParam(required = false) @Min(value=0, message = "Page cannot be negative") Integer pageCount){
+    @GetMapping("/me")
+    public ResponseEntity<List<UserBookResponseDTO>> getMyBooks(
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) ReadingStatus status){
 
-        UserBookResponseDTO trackedBook = bookService.addBookToUserList(userId, openLibraryId, title, author, pageCount);
-        return ResponseEntity.ok(trackedBook);
+        return ResponseEntity.ok(bookService.getUserBooks(currentUser.getId(), status));
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<UserBookResponseDTO>> getUserBooks(
-                            @PathVariable @Positive(message = "userID must be positive") @NotNull(message = "User ID cannot be null") Long userId,
-                            @RequestParam(required = false) ReadingStatus status){
+    @PostMapping("/me")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserBookResponseDTO trackBook(
+            @AuthenticationPrincipal User currentUser,
+            @RequestBody @Valid TrackBookRequestDTO request){
 
-        List<UserBookResponseDTO> books = bookService.getUserBooks(userId, status);
-        return ResponseEntity.ok(books);
+        return bookService.addBookToUserList(currentUser.getId(), request);
     }
 
-    @PatchMapping("/tracking/{userBookId}/progress")
+    @GetMapping("/me/stats")
+    public ResponseEntity<UserStatsResponseDTO> getMyStats(@AuthenticationPrincipal User currentUser){
+        return ResponseEntity.ok(bookService.getUserStats(currentUser.getId()));
+    }
+
+    @PatchMapping("/me/{userBookId}/progress")
     public ResponseEntity<UserBookResponseDTO> updateProgress(
-                            @PathVariable @Positive(message = "Userbook ID must be positive") Long userBookId,
-                            @RequestParam @Min(value=0, message = "Page cannot be negative")  Integer page){
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable @Positive(message = "Tracking id must be positive") Long userBookId,
+            @RequestBody @Valid UpdateProgressRequestDTO request){
 
-        UserBookResponseDTO updated = bookService.updatePageProgress(userBookId, page);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(
+                bookService.updatePageProgress(currentUser.getId(), userBookId, request.getCurrentPage()));
     }
 
-    @PatchMapping("/tracking/{userBookId}/status")
+    @PatchMapping("/me/{userBookId}/status")
     public ResponseEntity<UserBookResponseDTO> updateStatus(
-                            @PathVariable @Positive(message = "Userbook ID must be positive") Long userBookId,
-                            @RequestParam @NotNull(message = "Reading status cannot be null") ReadingStatus status){
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable @Positive(message = "Tracking id must be positive") Long userBookId,
+            @RequestBody @Valid UpdateStatusRequestDTO request){
 
-        UserBookResponseDTO updated = bookService.updateReadingStatus(userBookId, status);
-        return ResponseEntity.ok(updated);
-    }
-
-    @GetMapping("user/{userId}/stats")
-    public ResponseEntity<UserStatsResponseDTO> getUserStats(
-            @PathVariable @Positive(message = "userID must be positive") @NotNull(message = "User ID cannot be null") Long userId){
-
-        UserStatsResponseDTO stats = bookService.getUserStats(userId);
-        return ResponseEntity.ok(stats);
+        return ResponseEntity.ok(
+                bookService.updateReadingStatus(currentUser.getId(), userBookId, request.getStatus()));
     }
 }

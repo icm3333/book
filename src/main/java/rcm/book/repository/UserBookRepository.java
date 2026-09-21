@@ -10,8 +10,16 @@ import java.util.Optional;
 
 @Repository
 public interface UserBookRepository extends JpaRepository<UserBook, Long> {
-    List<UserBook> findByUserId(Long userId); // All books tracked by an id
-    List<UserBook> findByUserIdAndStatus(Long userId, ReadingStatus status); // All books tracked by an id with specific status.
 
-    Optional<UserBook> findByUser_IdAndBook_Id(Long userId, Long bookId);
+    List<UserBook> findByUserId(Long userId);
+
+    List<UserBook> findByUserIdAndStatus(Long userId, ReadingStatus status);
+
+    /**
+     * Ownership-scoped lookup: a tracking record is only visible through its owner, so a
+     * caller can never reach another user's record even by guessing its id.
+     */
+    Optional<UserBook> findByIdAndUserId(Long id, Long userId);
+
+    boolean existsByUserIdAndBookId(Long userId, Long bookId);
 }
