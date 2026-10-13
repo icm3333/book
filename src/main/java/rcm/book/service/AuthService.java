@@ -1,17 +1,17 @@
 package rcm.book.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import rcm.book.config.TokenProvider;
 import rcm.book.dto.LoginRequestDTO;
 import rcm.book.dto.RegisterRequestDTO;
 import rcm.book.dto.TokenResponseDTO;
+import rcm.book.exception.DuplicateResourceException;
 import rcm.book.model.Roles;
 import rcm.book.model.User;
 import rcm.book.model.UserType;
@@ -29,37 +29,42 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final TokenProvider tokenProvider;
-    @Value("${jwt.expiration}")
-    private long expirationTime;
 
+    @Transactional
     public void register(RegisterRequestDTO dto){
-        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new IllegalArgumentException("Email already in use");
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new DuplicateResourceException("Email already in use.");
         }
-        if (userRepository.findByUsername(dto.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Username already in use");
+        if (userRepository.existsByUsername(dto.getUsername())) {
+            throw new DuplicateResourceException("Username already in use.");
         }
-
-        Roles role = rolesRepository.findByName(UserType.ROLE_USER.name())
-                .orElseGet(()-> rolesRepository.save(Roles.builder()
-                        .name(UserType.ROLE_USER.name())
-                        .build()));
 
         User user = new User();
-        user.setEmail(dto.getEmail());
         user.setUsername(dto.getUsername());
-        user.setRoles(Set.of(role));
+        user.setEmail(dto.getEmail());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setRoles(Set.of(defaultRole()));
+
         userRepository.save(user);
     }
 
+    /**
+     * Authenticates the credentials and issues a JWT.
+     *
+     * <p>A failed authentication propagates as {@code BadCredentialsException}, which the
+     * global handler renders as 401 with a deliberately generic message.
+     */
     public TokenResponseDTO login(LoginRequestDTO dto){
-        try {
-            Authentication auth = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(dto.getUsername(), dto.getPassword()));
-            String token = tokenProvider.generateToken(auth);
-            return new TokenResponseDTO(token, expirationTime);
-        }catch (BadCredentialsException e){
-            throw new IllegalArgumentException("Bad Credentials");
-        }
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(dto.getUsername(), dto.getPassword()));
+
+        return new TokenResponseDTO(tokenProvider.generateToken(authentication), tokenProvider.getExpirationMillis());
+    }
+
+    private Roles defaultRole(){
+        return rolesRepository.findByName(UserType.ROLE_USER.name())
+                .orElseGet(() -> rolesRepository.save(Roles.builder()
+                        .name(UserType.ROLE_USER.name())
+                        .build()));
     }
 }

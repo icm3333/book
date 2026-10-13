@@ -14,7 +14,7 @@ public class UserBookResponseDTO {
     private String title;
     private String author;
     private String openLibraryId;
-    private String coverImgURL;
+    private String coverImgUrl;
     private Integer pageCount;
     private ReadingStatus status;
     private Integer currentPage;

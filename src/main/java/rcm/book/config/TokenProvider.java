@@ -27,6 +27,11 @@ public class TokenProvider {
         return buildToken(user.getUsername());
     }
 
+    /** Token lifetime in milliseconds, so callers do not need to read the property themselves. */
+    public long getExpirationMillis(){
+        return expirationTime;
+    }
+
     private String buildToken(String username){
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationTime);
@@ -48,7 +53,6 @@ public class TokenProvider {
             getClaims(token);
             return true;
         }catch (Exception e){
-            //System.out.println("Token validation error: " + e.getMessage());
             return false;
         }
     }
