@@ -1,0 +1,126 @@
+<article
+  class="card flex h-full gap-4 p-4 transition-shadow hover:shadow-md motion-safe:animate-fade-in"
+  [attr.aria-labelledby]="ids().title"
+>
+  <app-book-cover class="w-20 shrink-0 self-start sm:w-24" [src]="book().coverImgUrl" [title]="book().title" />
+
+  <div class="flex min-w-0 flex-1 flex-col">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h3 [id]="ids().title" class="line-clamp-2 leading-snug font-semibold text-slate-900">{{ book().title }}</h3>
+        <p class="mt-0.5 truncate text-sm text-slate-500">{{ book().author || 'Unknown author' }}</p>
+      </div>
+      <span
+        class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset transition-colors"
+        [class]="badgeClass()"
+      >
+        {{ labels[book().status] }}
+      </span>
+    </div>
+
+    <div class="mt-3">
+      @if (percent() !== null) {
+        <div class="flex items-baseline justify-between text-xs text-slate-500">
+          <span>Page {{ currentPage() }} of {{ book().pageCount }}</span>
+          <span class="font-medium text-slate-700 tabular-nums">{{ percent() }}%</span>
+        </div>
+        <div
+          class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-valuenow]="percent()"
+          [attr.aria-label]="'Reading progress for ' + book().title"
+        >
+          <div
+            class="h-full rounded-full bg-brand-500 transition-[width] duration-500 ease-out"
+            [style.width.%]="percent()"
+          ></div>
+        </div>
+      } @else {
+        <p class="text-xs text-slate-500">Page {{ currentPage() }} · total pages unknown</p>
+      }
+    </div>
+
+    <div class="mt-auto flex flex-wrap items-center gap-x-2 gap-y-3 pt-4">
+      <form class="flex items-center gap-1" novalidate (submit)="$event.preventDefault(); saveProgress()">
+        <label [attr.for]="ids().page" class="sr-only">Current page of {{ book().title }}</label>
+        <button
+          type="button"
+          class="stepper-btn"
+          aria-label="Previous page"
+          [disabled]="savingProgress() || pageDraft() <= 0"
+          (click)="step(-1)"
+        >
+          <app-icon name="minus" class="size-3.5" />
+        </button>
+        <input
+          [id]="ids().page"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          [attr.max]="book().pageCount"
+          class="input h-8 w-20 px-2 py-1 text-center tabular-nums"
+          [value]="pageDraft()"
+          [attr.aria-invalid]="showPageError()"
+          [attr.aria-describedby]="showPageError() ? ids().pageError : null"
+          (input)="onPageInput($event)"
+          (keydown.escape)="resetDraft()"
+        />
+        <button
+          type="button"
+          class="stepper-btn"
+          aria-label="Next page"
+          [disabled]="savingProgress() || atMax()"
+          (click)="step(1)"
+        >
+          <app-icon name="plus" class="size-3.5" />
+        </button>
+
+        @if (savingProgress()) {
+          <app-spinner class="ml-1 size-4 text-brand-600" label="Saving progress" />
+        } @else if (dirty()) {
+          <button type="submit" class="btn btn-primary btn-sm ml-1" [disabled]="pageError() !== null">Save</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="resetDraft()">Cancel</button>
+        } @else if (justSaved()) {
+          <span class="ml-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 motion-safe:animate-fade-in" role="status">
+            <app-icon name="check" class="size-3.5" />
+            Saved
+          </span>
+        }
+      </form>
+
+      <div class="ml-auto flex items-center gap-2">
+        @if (savingStatus()) {
+          <app-spinner class="size-4 text-brand-600" label="Updating status" />
+        }
+        <label [attr.for]="ids().status" class="sr-only">Reading status of {{ book().title }}</label>
+        <select
+          [id]="ids().status"
+          class="input h-8 w-auto py-0 pr-8 pl-2.5 text-xs font-medium"
+          [disabled]="savingStatus()"
+          (change)="changeStatus($event)"
+        >
+          @for (status of statuses; track status) {
+            <option [value]="status" [selected]="status === book().status">{{ labels[status] }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    @if (showPageError()) {
+      <p [id]="ids().pageError" class="field-error">{{ pageError() }}</p>
+    }
+
+    @if (started() || finished()) {
+      <p class="mt-3 text-xs text-slate-400">
+        @if (started(); as date) {
+          Started {{ date }}
+        }
+        @if (finished(); as date) {
+          · Finished {{ date }}
+        }
+      </p>
+    }
+  </div>
+</article>

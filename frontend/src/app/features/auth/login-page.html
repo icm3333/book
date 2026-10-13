@@ -1,0 +1,69 @@
+<app-auth-layout heading="Welcome back" subheading="Sign in to pick up where you left off.">
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="space-y-5">
+    @if (serverError(); as message) {
+      <div role="alert" class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+        <app-icon name="alert-circle" class="mt-0.5 size-4" />
+        <span>{{ message }}</span>
+      </div>
+    }
+
+    <div>
+      <label for="username" class="label">Username</label>
+      <input
+        id="username"
+        type="text"
+        formControlName="username"
+        autocomplete="username"
+        autocapitalize="none"
+        spellcheck="false"
+        class="input"
+        [attr.aria-invalid]="invalid('username')"
+        [attr.aria-describedby]="invalid('username') ? 'username-error' : null"
+      />
+      @if (invalid('username')) {
+        <p id="username-error" class="field-error">Enter your username.</p>
+      }
+    </div>
+
+    <div>
+      <label for="password" class="label">Password</label>
+      <div class="relative">
+        <input
+          id="password"
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+          class="input pr-10"
+          [attr.aria-invalid]="invalid('password')"
+          [attr.aria-describedby]="invalid('password') ? 'password-error' : null"
+        />
+        <button
+          type="button"
+          class="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-slate-400 transition-colors hover:text-slate-600 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none"
+          [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+          [attr.aria-pressed]="showPassword()"
+          (click)="showPassword.set(!showPassword())"
+        >
+          <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" class="size-4" />
+        </button>
+      </div>
+      @if (invalid('password')) {
+        <p id="password-error" class="field-error">Enter your password.</p>
+      }
+    </div>
+
+    <button type="submit" class="btn btn-primary w-full py-2.5" [disabled]="submitting()">
+      @if (submitting()) {
+        <app-spinner class="size-4" />
+        Signing in…
+      } @else {
+        Sign in
+      }
+    </button>
+  </form>
+
+  <p authFooter>
+    New here?
+    <a routerLink="/register" class="font-medium text-brand-600 hover:text-brand-700 hover:underline">Create an account</a>
+  </p>
+</app-auth-layout>

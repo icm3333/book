@@ -1,0 +1,106 @@
+<section aria-labelledby="library-heading">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 id="library-heading" class="text-2xl font-semibold tracking-tight text-slate-900">My library</h1>
+      <p class="mt-1 text-sm text-slate-500">
+        @if (library.loaded() && library.books().length > 0) {
+          {{ summary() }}
+        } @else {
+          Keep track of everything you are reading.
+        }
+      </p>
+    </div>
+
+    <div class="flex gap-2">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        aria-label="Refresh library"
+        [disabled]="library.loading()"
+        (click)="library.reload()"
+      >
+        @if (library.loading()) {
+          <app-spinner class="size-4" />
+        } @else {
+          <app-icon name="refresh" class="size-4" />
+        }
+      </button>
+      <a routerLink="/search" class="btn btn-primary">
+        <app-icon name="plus" class="size-4" />
+        Add books
+      </a>
+    </div>
+  </div>
+
+  <nav aria-label="Filter by status" class="-mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+    @for (option of filterOptions(); track option.value) {
+      <a
+        routerLink="."
+        [queryParams]="{ status: option.param }"
+        class="chip"
+        [class.chip-active]="filter() === option.value"
+        [attr.aria-current]="filter() === option.value ? 'page' : null"
+      >
+        {{ option.label }}
+        <span class="chip-count">{{ option.count }}</span>
+      </a>
+    }
+  </nav>
+
+  <div class="mt-6">
+    @if (library.loading() && library.books().length === 0) {
+      <p class="sr-only" role="status">Loading your library…</p>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @for (item of skeletons; track item) {
+          <app-book-card-skeleton />
+        }
+      </div>
+    } @else if (library.failed() && library.books().length === 0) {
+      <app-empty-state
+        icon="alert-circle"
+        tone="danger"
+        heading="We couldn't load your library"
+        message="Check your connection and that the API is running, then try again."
+      >
+        <button type="button" class="btn btn-primary" (click)="library.reload()">
+          <app-icon name="refresh" class="size-4" />
+          Try again
+        </button>
+      </app-empty-state>
+    } @else if (library.books().length === 0) {
+      <app-empty-state
+        icon="book-open"
+        heading="Your library is empty"
+        message="Search Open Library for something to read and it will show up here."
+      >
+        <a routerLink="/search" class="btn btn-primary">
+          <app-icon name="search" class="size-4" />
+          Find a book
+        </a>
+      </app-empty-state>
+    } @else if (visibleBooks().length === 0) {
+      <app-empty-state
+        icon="inbox"
+        heading="Nothing here yet"
+        [message]="'You have no books marked as ' + filterLabel() + '.'"
+      >
+        <a routerLink="." [queryParams]="{ status: null }" class="btn btn-secondary">Show all books</a>
+      </app-empty-state>
+    } @else {
+      @if (library.failed()) {
+        <div role="alert" class="mb-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <app-icon name="alert-circle" class="size-4" />
+          <span class="flex-1">We couldn't refresh your library. You are seeing the last loaded copy.</span>
+          <button type="button" class="font-medium underline-offset-2 hover:underline" (click)="library.reload()">Retry</button>
+        </div>
+      }
+      <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
+        @for (book of visibleBooks(); track book.id) {
+          <li>
+            <app-book-card [book]="book" />
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</section>

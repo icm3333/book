@@ -1,0 +1,113 @@
+<section aria-labelledby="search-heading">
+  <h1 id="search-heading" class="text-2xl font-semibold tracking-tight text-slate-900">Find books</h1>
+  <p class="mt-1 text-sm text-slate-500">Search the Open Library catalogue and add titles to your library.</p>
+
+  <form role="search" class="relative mt-6 max-w-2xl" (submit)="$event.preventDefault()">
+    <label for="book-search" class="sr-only">Search by title, author or ISBN</label>
+    <app-icon
+      name="search"
+      class="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-slate-400"
+    />
+    <input
+      #searchInput
+      id="book-search"
+      type="text"
+      enterkeyhint="search"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="Search by title, author or ISBN…"
+      class="input h-12 pr-11 pl-11 text-base shadow-sm"
+      aria-describedby="search-status"
+      [formControl]="query"
+      (keydown.escape)="clear()"
+    />
+    @if (query.value) {
+      <button
+        type="button"
+        class="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none"
+        aria-label="Clear search"
+        (click)="clear()"
+      >
+        <app-icon name="x" class="size-4" />
+      </button>
+    }
+  </form>
+  <p id="search-status" class="mt-2 text-xs text-slate-500" aria-live="polite">{{ statusText() }}</p>
+
+  <div class="mt-6">
+    @switch (state().kind) {
+      @case ('loading') {
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          @for (item of skeletons; track item) {
+            <app-book-card-skeleton />
+          }
+        </div>
+      }
+      @case ('error') {
+        <app-empty-state icon="alert-circle" tone="danger" heading="Search failed" [message]="failure() ?? ''">
+          <button type="button" class="btn btn-primary" (click)="retry()">
+            <app-icon name="refresh" class="size-4" />
+            Try again
+          </button>
+        </app-empty-state>
+      }
+      @case ('results') {
+        @if (results().length === 0) {
+          <app-empty-state
+            icon="inbox"
+            heading="No matches"
+            message="Try a different spelling, fewer words, or the author's name."
+          />
+        } @else {
+          <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
+            @for (book of results(); track book.openLibraryId) {
+              <li>
+                <article class="card flex h-full gap-4 p-4 motion-safe:animate-fade-in" [attr.aria-label]="book.title">
+                  <app-book-cover class="w-16 shrink-0 self-start sm:w-20" [src]="book.coverImgUrl" [title]="book.title" />
+                  <div class="flex min-w-0 flex-1 flex-col">
+                    <h3 class="line-clamp-2 leading-snug font-semibold text-slate-900">{{ book.title }}</h3>
+                    <p class="mt-0.5 truncate text-sm text-slate-500">{{ book.author }}</p>
+                    @if (book.pageCount) {
+                      <p class="mt-1 text-xs text-slate-400">{{ book.pageCount }} pages</p>
+                    }
+
+                    <div class="mt-auto pt-4">
+                      @if (library.trackedIds().has(book.openLibraryId)) {
+                        <a routerLink="/library" class="btn btn-secondary btn-sm">
+                          <app-icon name="check" class="size-4 text-emerald-600" />
+                          In your library
+                        </a>
+                      } @else {
+                        <button
+                          type="button"
+                          class="btn btn-primary btn-sm"
+                          [disabled]="isAdding(book)"
+                          (click)="add(book)"
+                        >
+                          @if (isAdding(book)) {
+                            <app-spinner class="size-4" />
+                            Adding…
+                          } @else {
+                            <app-icon name="plus" class="size-4" />
+                            Add to library
+                          }
+                        </button>
+                      }
+                    </div>
+                  </div>
+                </article>
+              </li>
+            }
+          </ul>
+        }
+      }
+      @default {
+        <app-empty-state
+          icon="search"
+          heading="Search for your next read"
+          [message]="'Type at least ' + minLength + ' characters, for example “Dune” or “Ursula K. Le Guin”.'"
+        />
+      }
+    }
+  </div>
+</section>
